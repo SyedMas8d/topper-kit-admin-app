@@ -3,14 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { api, SUBJECTS } from '../api';
 import { Notice } from '../components/Layout';
 
-const BOARDS = ['STATE', 'CBSE', 'ICSE', 'STATE_TAMIL', 'NIOS'];
+const BOARDS = ['STATE', 'CBSE', 'ICSE', 'NIOS'];
+// A subject named in the file ("10_state_english_book.pdf"), to suggest; never assumed.
+const NAMED: [RegExp, string][] = [
+  [/english/i, 'ENGLISH'],
+  [/math/i, 'MATHEMATICS'],
+  [/social/i, 'SOCIAL_SCIENCE'],
+  [/science/i, 'SCIENCE'],
+];
 const CLASSES = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
 export function Upload() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState('SCIENCE');
+  // No default: an English book classified as Science is read with Science's rules.
+  const [subject, setSubject] = useState('');
   const [board, setBoard] = useState('STATE');
   const [classLevel, setClassLevel] = useState('10');
   const [type, setType] = useState<'TEXTBOOK' | 'QUESTION_PAPER'>('TEXTBOOK');
@@ -47,7 +55,17 @@ export function Upload() {
       <form className="card stack" onSubmit={submit} style={{ maxWidth: 620 }}>
         <label className="field">
           PDF
-          <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => {
+              const chosen = e.target.files?.[0] ?? null;
+              setFile(chosen);
+              const named = chosen && NAMED.find(([pattern]) => pattern.test(chosen.name));
+              if (named && !subject) setSubject(named[1]);
+              if (chosen && /paper|exam|question/i.test(chosen.name)) setType('QUESTION_PAPER');
+            }}
+          />
         </label>
         <div className="grid2">
           <label className="field">
@@ -66,6 +84,7 @@ export function Upload() {
           <label className="field">
             Subject
             <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+              <option value="" disabled>Choose…</option>
               {Object.entries(SUBJECTS).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
             </select>
           </label>
@@ -92,7 +111,7 @@ export function Upload() {
         </label>
         {error && <Notice tone="error">{error}</Notice>}
         <div className="row">
-          <button className="btn" disabled={busy || !file}>{busy ? 'Uploading…' : 'Upload'}</button>
+          <button className="btn" disabled={busy || !file || !subject}>{busy ? 'Uploading…' : 'Upload'}</button>
           <span className="muted small">Next: process (textbooks), classify, check, publish.</span>
         </div>
       </form>
