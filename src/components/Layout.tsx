@@ -19,6 +19,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav>
             <NavLink to="/" end>Documents</NavLink>
             <NavLink to="/upload">Upload</NavLink>
+            <NavLink to="/parents">Parents</NavLink>
             <NavLink to="/usage">Usage</NavLink>
           </nav>
           <span className="server">{session.server()}</span>

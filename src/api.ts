@@ -94,6 +94,26 @@ export type Usage = {
   by_day: Record<string, UsageRow>;
 };
 
+export type Child = {
+  id: string;
+  name: string;
+  board: string;
+  class_level: string;
+  created_at: string;
+  last_seen_at: string | null;
+  studying_now: boolean;
+};
+export type ParentAccount = {
+  id: string;
+  email: string;
+  name: string | null;
+  sign_in: 'google' | 'password' | 'both';
+  email_verified: boolean;
+  created_at: string;
+  children: Child[];
+};
+export type ParentsPage = { total: number; page: number; page_size: number; parents: ParentAccount[] };
+
 // --- Calls ---------------------------------------------------------------------------------
 
 // The classify routes are named by board and subject: /api/v1/admin/state/classify/science.
@@ -126,6 +146,8 @@ export const api = {
   clear: (id: string) => call<{ chunks: number; files: string[]; progress_items: number }>('/api/v1/admin/clear', json({ document_id: id })),
   crop: (path: string) => call<{ data_uri: string }>(`/api/v1/admin/files?path=${encodeURIComponent(path)}`),
   usage: (from: string, to: string) => call<Usage>(`/api/v1/admin/usage?from=${from}&to=${to}`),
+  parents: (page: number, pageSize: number, q: string) =>
+    call<ParentsPage>(`/api/v1/admin/parents?page=${page}&page_size=${pageSize}${q ? `&q=${encodeURIComponent(q)}` : ''}`),
 };
 
 export const SUBJECTS: Record<string, string> = {
