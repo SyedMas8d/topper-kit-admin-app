@@ -51,12 +51,36 @@ async function call<T>(path: string, init: RequestInit = {}, key = session.key()
   return res.status === 204 ? (undefined as T) : res.json();
 }
 
+// A file the server sends (a book bundle), saved through the browser: the admin key travels in
+// a header, so a plain link cannot fetch it.
+async function download(path: string, filename: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${session.server()}${path}`, { headers: { 'X-Admin-Key': session.key() ?? '' } });
+  } catch {
+    throw new ApiError(`Can't reach ${session.server()}.`, 0);
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(describe(body.detail, res.status), res.status);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const link = Object.assign(document.createElement('a'), { href: url, download: filename });
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
 // --- Types (as the API sends them) -------------------------------------------------------
 
 export type Subject = 'SCIENCE' | 'MATHEMATICS' | 'SOCIAL_SCIENCE' | 'ENGLISH' | string;
 export type DocumentType = 'TEXTBOOK' | 'QUESTION_PAPER';
+
+// A book bundle uploaded for import, waiting for a confirm: what it is, and what it would meet.
+export type BookSummary = { id: string; title: string; board: string | null; class_level: string | null; subject: Subject | null; document_type: DocumentType; published: boolean };
+export type ImportWaiting = { token: string; document: BookSummary; same_id: BookSummary | null; same_book: BookSummary | null };
+export type ImportDone = { document_id: string; title: string; rows: Record<string, number>; chunks: number; files: number };
 
 export type Doc = {
   id: string;
@@ -157,6 +181,15 @@ export const api = {
   documents: () => call<Doc[]>('/api/v1/documents'),
   document: (id: string) => call<Doc>(`/api/v1/documents/${id}`),
   upload: (form: FormData) => call<Doc>('/api/v1/documents', { method: 'POST', body: form }),
+  // A finished book moved between servers: exported on one, imported on another.
+  exportBook: (doc: Doc) =>
+    download(`/api/v1/admin/documents/${doc.id}/export`, `${doc.title.replace(/[^\p{L}\p{N} ._-]/gu, '')} (${doc.board}).topperkit.zip`),
+  receiveBook: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return call<ImportWaiting>('/api/v1/admin/documents/import', { method: 'POST', body: form });
+  },
+  importBook: (token: string) => call<ImportDone>(`/api/v1/admin/documents/import/${token}`, { method: 'POST' }),
   process: (id: string) => call<{ status: string; page_count: number; chunk_count: number }>(`/api/v1/documents/${id}/process`, { method: 'POST' }),
   classify: (doc: Doc) => call<Job>(classifyPath(doc), json({ document_id: doc.id })),
   job: (id: string) => call<Job>(`/api/v1/admin/jobs/${id}`),

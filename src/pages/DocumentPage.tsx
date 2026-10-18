@@ -110,7 +110,15 @@ export function DocumentPage() {
             {doc.page_count ? ` · ${doc.page_count} pages` : ''}
           </div>
         </div>
-        <span className={`pill ${state.tone}`}>{state.label}</span>
+        <div className="row">
+          {/* The whole book in one file, to import on another server (Documents → Import a book). */}
+          <button className="btn soft" disabled={busy !== null || !processed}
+            title={processed ? 'Rows, answer keys, search passages and files, in one file' : 'Process the book first'}
+            onClick={() => act('export', () => api.exportBook(doc), 'Exported. Import it on the other server: Documents → Import a book.')}>
+            {busy === 'export' ? 'Exporting…' : 'Export book'}
+          </button>
+          <span className={`pill ${state.tone}`}>{state.label}</span>
+        </div>
       </div>
 
       {error && <Notice tone="error">{error}</Notice>}
