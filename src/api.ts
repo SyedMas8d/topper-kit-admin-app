@@ -114,6 +114,26 @@ export type ParentAccount = {
 };
 export type ParentsPage = { total: number; page: number; page_size: number; parents: ParentAccount[] };
 
+// Reading a book from its page images (Tamil-medium books), and checking each page.
+export type Doubt = {
+  at: number; // word index
+  length: number; // words covered; 0: text only the cross-check read, offered to add
+  readings: [string, string]; // [the reader's, the cross-check's]
+  why: 'disagree' | 'script' | 'only-cross-check';
+};
+export type ReadingStatus = {
+  reads_from_image: boolean;
+  jobs: { model: string; status: 'uploading' | 'running' | 'done' | 'failed'; pages: number; error: string | null; started_at: string; finished_at: string | null }[];
+  // readers: 'both'; the one model read it when Google refused the other ('reader' | 'cross-check'); 'none': type it in.
+  pages: { page: number; doubts: number; checked: boolean; readers: string }[];
+  pages_checked: number;
+  doubts_left: number;
+  refused: number[]; // pages Google's copyright filter refused to one model or both: never sent again
+  unread: number; // pages still to be read
+};
+// boxes: each doubt's place on the image, [x0, y0, x1, y1] as fractions of the page (null: unknown).
+export type PageToCheck = { page: number; words: string[]; doubts: Doubt[]; checked: boolean; readers: string; image: string; boxes: ([number, number, number, number] | null)[] };
+
 // --- Calls ---------------------------------------------------------------------------------
 
 // The classify routes are named by board and subject: /api/v1/admin/state/classify/science.
@@ -146,6 +166,13 @@ export const api = {
   clear: (id: string) => call<{ chunks: number; files: string[]; progress_items: number }>('/api/v1/admin/clear', json({ document_id: id })),
   crop: (path: string) => call<{ data_uri: string }>(`/api/v1/admin/files?path=${encodeURIComponent(path)}`),
   usage: (from: string, to: string) => call<Usage>(`/api/v1/admin/usage?from=${from}&to=${to}`),
+  readPages: (id: string, pages: number[] = []) => call<ReadingStatus>(`/api/v1/admin/documents/${id}/pages/read`, json({ pages })),
+  readingStatus: (id: string) => call<ReadingStatus>(`/api/v1/admin/documents/${id}/pages`),
+  pageToCheck: (id: string, page: number) => call<PageToCheck>(`/api/v1/admin/documents/${id}/pages/${page}`),
+  checkPage: (id: string, page: number, words: string[]) =>
+    call<{ page: number; checked: boolean }>(`/api/v1/admin/documents/${id}/pages/${page}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ words }),
+    }),
   parents: (page: number, pageSize: number, q: string) =>
     call<ParentsPage>(`/api/v1/admin/parents?page=${page}&page_size=${pageSize}${q ? `&q=${encodeURIComponent(q)}` : ''}`),
 };

@@ -7,6 +7,7 @@ import { Layout } from './components/Layout';
 import { DocumentPage } from './pages/DocumentPage';
 import { Documents } from './pages/Documents';
 import { Login } from './pages/Login';
+import { PageReview } from './pages/PageReview';
 import { ParentsPage } from './pages/ParentsPage';
 import { Upload } from './pages/Upload';
 import { UsagePage } from './pages/UsagePage';
@@ -24,6 +25,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/" element={<Guarded><Documents /></Guarded>} />
         <Route path="/upload" element={<Guarded><Upload /></Guarded>} />
         <Route path="/documents/:id" element={<Guarded><DocumentPage /></Guarded>} />
+        <Route path="/documents/:id/pages" element={<Guarded><PageReview /></Guarded>} />
+        <Route path="/documents/:id/pages/:page" element={<Guarded><PageReview /></Guarded>} />
         <Route path="/usage" element={<Guarded><UsagePage /></Guarded>} />
         <Route path="/parents" element={<Guarded><ParentsPage /></Guarded>} />
         <Route path="*" element={<Navigate to="/" replace />} />

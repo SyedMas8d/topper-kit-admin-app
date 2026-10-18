@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, subjectName } from '../api';
-import type { Doc, Job } from '../api';
+import type { Doc, Job, ReadingStatus } from '../api';
 import { Notice } from '../components/Layout';
 import { Report } from '../components/Report';
 import { stateOf } from './Documents';
 
 const POLL_MS = 3000;
+const READING_POLL_MS = 30000;
 
 // How long a finished job took. Both times are the database's own clock, which may not be this
 // browser's time zone, so only their difference is shown.
@@ -23,12 +24,15 @@ export function DocumentPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // Tamil-medium books are read from their page images (their PDF text is broken).
+  const [reading, setReading] = useState<ReadingStatus | null>(null);
 
   const load = useCallback(async () => {
     try {
       const [found, jobs] = await Promise.all([api.document(id), api.jobs(id)]);
       setDoc(found);
       setJob(jobs[0] ?? null);
+      if (found.board === 'STATE_TAMIL') setReading(await api.readingStatus(id));
     } catch (err) {
       setError((err as Error).message);
     }
@@ -50,6 +54,17 @@ export function DocumentPage() {
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [job, load]);
+
+  // While pages are being sent or read at Google, ask how it is going (each ask also collects
+  // finished jobs and builds the pages' doubts).
+  const readingBusy = reading?.jobs.some((j) => j.status === 'running' || j.status === 'uploading') ?? false;
+  useEffect(() => {
+    if (!readingBusy) return;
+    const timer = setInterval(() => {
+      api.readingStatus(id).then(setReading).catch(() => undefined);
+    }, READING_POLL_MS);
+    return () => clearInterval(timer);
+  }, [readingBusy, id]);
 
   async function act(name: string, run: () => Promise<unknown>, done?: string) {
     setBusy(name);
@@ -102,12 +117,55 @@ export function DocumentPage() {
       {note && <Notice tone="ok">{note}</Notice>}
 
       <div className="steps">
+        {reading?.reads_from_image && (
+          <div className={`step ${reading.pages.length > 0 && reading.pages_checked === reading.pages.length ? 'done' : ''}`}>
+            <span className="n">0 · Read and check pages</span>
+            <span className="small muted">
+              Its PDF text is broken, so Gemini reads each page image (batch, half price; minutes to hours), then you
+              check each page against the book.
+            </span>
+            {reading.jobs.map((j, n) => (
+              <span key={n} className="small">
+                {j.status === 'uploading' ? '⏫ sending pages to Google…' : j.status === 'running' ? '⏳ reading at Google…' : j.status === 'done' ? '✓' : '✗'}{' '}
+                {j.model}: {j.pages} pages{j.error ? ` · ${j.error}` : ''}
+              </span>
+            ))}
+            {reading.pages.length > 0 && (
+              <a className="small" href={`/documents/${doc.id}/pages`}>
+                Check the text: {reading.pages_checked} of {reading.pages.length} pages done · {reading.doubts_left} doubts left →
+              </a>
+            )}
+            {reading.refused.length > 0 && (
+              <span className="small">
+                ⚠ Google would not read pages {reading.refused.join(', ')} (its copyright filter; asking again gets the same
+                answer). They are in the check list to check word by word, or type in.
+              </span>
+            )}
+            {reading.unread > 0 && !reading.jobs.some((j) => j.status === 'running' || j.status === 'uploading') && (
+              <button className="btn" disabled={busy !== null} onClick={() => act('read', async () => setReading(await api.readPages(doc.id)),
+                'Sent to Google. Come back later; this page shows how it is going.')}>
+                {reading.pages.length ? 'Read the remaining pages' : 'Read all pages'}
+              </button>
+            )}
+          </div>
+        )}
         {!paper && (
           <div className={`step ${processed ? 'done' : ''}`}>
             <span className="n">1 · Process</span>
-            <span className="small muted">Reads the PDF into searchable pages for the tutor.</span>
+            <span className="small muted">
+              {reading?.reads_from_image
+                ? 'Makes searchable pages from the read text: checked pages as corrected, the rest as the reader read them. Process again after checking more pages.'
+                : 'Reads the PDF into searchable pages for the tutor.'}
+            </span>
             {processed ? (
-              <span className="small">✓ {doc.chunk_count} passages</span>
+              <span className="row">
+                <span className="small">✓ {doc.chunk_count} passages</span>
+                {reading?.reads_from_image && (
+                  <button className="btn soft" disabled={busy !== null} onClick={() => act('process', () => api.process(doc.id), 'Processed again.')}>
+                    {busy === 'process' ? 'Processing…' : 'Process again'}
+                  </button>
+                )}
+              </span>
             ) : (
               <button className="btn" disabled={busy !== null} onClick={() => act('process', () => api.process(doc.id), 'Processed.')}>
                 {busy === 'process' ? 'Processing… (a minute or two)' : 'Process'}

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api, SUBJECTS } from '../api';
 import { Notice } from '../components/Layout';
 
-const BOARDS = ['STATE', 'CBSE', 'ICSE', 'NIOS'];
+const BOARDS = ['STATE', 'STATE_TAMIL', 'CBSE', 'ICSE', 'NIOS'];
+const BOARD_LABELS: Record<string, string> = { STATE: 'State Board', STATE_TAMIL: 'State Board (Tamil)' };
 // A subject named in the file ("10_state_english_book.pdf"), to suggest; never assumed.
 const NAMED: [RegExp, string][] = [
   [/english/i, 'ENGLISH'],
@@ -91,7 +92,7 @@ export function Upload() {
           <label className="field">
             Board
             <select value={board} onChange={(e) => setBoard(e.target.value)}>
-              {BOARDS.map((b) => <option key={b}>{b}</option>)}
+              {BOARDS.map((b) => <option key={b} value={b}>{BOARD_LABELS[b] ?? b}</option>)}
             </select>
           </label>
           <label className="field">

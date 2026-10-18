@@ -84,3 +84,27 @@ tr.click:hover td { background: var(--bg); }
 .step { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 8px; align-content: start; }
 .step.done { border-color: var(--green); background: var(--green-soft); }
 .step .n { font-family: var(--display); font-weight: 800; color: var(--indigo); }
+
+/* Checking a book read from its page images */
+.page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+.page-chip { display: grid; gap: 2px; text-align: center; padding: 8px; border-radius: var(--radius); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.page-chip.doubts { background: var(--amber-soft); }
+.page-chip.checked { background: var(--green-soft); border-color: var(--green); }
+.review { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.review-image { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; padding: 8px; }
+.review-image img { width: 100%; display: block; }
+.tamil-text { font-size: 17px; line-height: 2; white-space: normal; word-break: break-word; }
+textarea.tamil-text { width: 100%; font: inherit; font-size: 16px; line-height: 1.8; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+.doubt { font: inherit; border: 0; border-radius: 6px; padding: 0 4px; cursor: pointer; }
+.doubt.disagree { background: var(--amber-soft); outline: 2px solid var(--amber); }
+.doubt.script { background: var(--red-soft); outline: 2px solid var(--red); }
+.doubt.only-cross-check { background: var(--indigo-soft); outline: 2px dashed var(--indigo); }
+.doubt.settled { background: var(--green-soft); outline: 1px solid var(--green); }
+.doubt-panel { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; background: var(--bg); }
+@media (max-width: 900px) { .review { grid-template-columns: 1fr; } .review-image { position: static; max-height: none; } }
+.page-image { position: relative; }
+.page-box { position: absolute; padding: 0; border: 0; border-radius: 4px; cursor: pointer; mix-blend-mode: multiply; }
+.page-box.disagree { background: rgba(255, 184, 0, 0.35); outline: 2px solid var(--amber); }
+.page-box.script { background: rgba(220, 38, 38, 0.25); outline: 2px solid var(--red); }
+.page-box.settled { background: rgba(22, 163, 74, 0.18); outline: 1px solid var(--green); }
+.page-box.open { outline: 3px solid var(--indigo); outline-offset: 2px; }
