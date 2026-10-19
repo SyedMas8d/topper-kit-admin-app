@@ -67,7 +67,7 @@ export function ParentsPage() {
             go(1, draft.trim());
           }}
         >
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search email or name" style={{ minWidth: 260 }} />
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search email, name or phone" style={{ minWidth: 260 }} />
           <button className="btn">Search</button>
           {q && (
             <button
@@ -94,6 +94,7 @@ export function ParentsPage() {
             <thead>
               <tr>
                 <th>Parent</th>
+                <th>Phone</th>
                 <th>Sign-in</th>
                 <th>Joined</th>
                 <th>Children</th>
@@ -108,6 +109,7 @@ export function ParentsPage() {
                       {parent.email} {!parent.email_verified && <span className="pill warn">not verified</span>}
                     </div>
                   </td>
+                  <td className="small">{parent.phone_verified && parent.phone ? parent.phone : <span className="pill warn">not verified</span>}</td>
                   <td className="small">{SIGN_IN[parent.sign_in]}</td>
                   <td className="small">{day(parent.created_at)}</td>
                   <td>

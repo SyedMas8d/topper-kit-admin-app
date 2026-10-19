@@ -133,6 +133,8 @@ export type ParentAccount = {
   name: string | null;
   sign_in: 'google' | 'password' | 'both';
   email_verified: boolean;
+  phone: string | null; // "+919876543210", set once verified
+  phone_verified: boolean;
   created_at: string;
   children: Child[];
 };
