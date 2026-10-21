@@ -78,7 +78,7 @@ export type Subject = 'SCIENCE' | 'MATHEMATICS' | 'SOCIAL_SCIENCE' | 'ENGLISH' |
 export type DocumentType = 'TEXTBOOK' | 'QUESTION_PAPER';
 
 // A book bundle uploaded for import, waiting for a confirm: what it is, and what it would meet.
-export type BookSummary = { id: string; title: string; board: string | null; class_level: string | null; subject: Subject | null; document_type: DocumentType; published: boolean };
+export type BookSummary = { id: string; title: string; board: string | null; class_level: string | null; subject: Subject | null; document_type: DocumentType; volume?: number | null; published: boolean };
 export type ImportWaiting = { token: string; document: BookSummary; same_id: BookSummary | null; same_book: BookSummary | null };
 export type ImportDone = { document_id: string; title: string; rows: Record<string, number>; chunks: number; files: number };
 
@@ -90,6 +90,8 @@ export type Doc = {
   subject: Subject;
   document_type: DocumentType;
   exam_year: number | null;
+  volume: number | null; // a textbook printed in volumes: which one
+  read_from_images: boolean; // read from its page images (always so for STATE_TAMIL)
   board: string | null;
   status: string;
   page_count: number | null;
@@ -168,6 +170,7 @@ export const SUBJECT_SLUGS: Record<string, string> = {
   MATHEMATICS: 'math',
   SOCIAL_SCIENCE: 'social-science',
   ENGLISH: 'english',
+  PHYSICS: 'physics',
 };
 
 function classifyPath(doc: Doc): string {
@@ -217,5 +220,6 @@ export const SUBJECTS: Record<string, string> = {
   MATHEMATICS: 'Mathematics',
   SOCIAL_SCIENCE: 'Social Science',
   ENGLISH: 'English',
+  PHYSICS: 'Physics',
 };
 export const subjectName = (s: string) => SUBJECTS[s] ?? s;

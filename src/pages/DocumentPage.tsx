@@ -32,7 +32,8 @@ export function DocumentPage() {
       const [found, jobs] = await Promise.all([api.document(id), api.jobs(id)]);
       setDoc(found);
       setJob(jobs[0] ?? null);
-      if (found.board === 'STATE_TAMIL') setReading(await api.readingStatus(id));
+      // Tamil-medium books, and any book uploaded to be read from its page images (Physics).
+      if (found.board === 'STATE_TAMIL' || found.read_from_images) setReading(await api.readingStatus(id));
     } catch (err) {
       setError((err as Error).message);
     }
@@ -106,7 +107,7 @@ export function DocumentPage() {
         <div>
           <h1>{doc.title}</h1>
           <div className="muted">
-            {subjectName(doc.subject)} · {paper ? `Question paper ${doc.exam_year}` : 'Textbook'} · {doc.board} · Class {doc.class_level}
+            {subjectName(doc.subject)} · {paper ? `Question paper ${doc.exam_year}` : 'Textbook'}{doc.volume ? ` · Volume ${doc.volume}` : ''} · {doc.board} · Class {doc.class_level}
             {doc.page_count ? ` · ${doc.page_count} pages` : ''}
           </div>
         </div>
@@ -129,8 +130,10 @@ export function DocumentPage() {
           <div className={`step ${reading.pages.length > 0 && reading.pages_checked === reading.pages.length ? 'done' : ''}`}>
             <span className="n">0 · Read and check pages</span>
             <span className="small muted">
-              Its PDF text is broken, so Gemini reads each page image (batch, half price; minutes to hours), then you
-              check each page against the book.
+              {doc.board === 'STATE_TAMIL'
+                ? 'Its PDF text is broken (Tamil fonts), so Gemini reads each page image'
+                : 'Its PDF text scrambles the equations, so Gemini reads each page image'}{' '}
+              (batch, half price; minutes to hours; needs the paid API key), then you check each page against the book.
             </span>
             {reading.jobs.map((j, n) => (
               <span key={n} className="small">

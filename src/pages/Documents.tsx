@@ -13,7 +13,7 @@ export function stateOf(doc: Doc): { label: string; tone: string } {
 }
 
 const describe = (b: BookSummary) =>
-  `${subjectName(b.subject ?? '')} · ${b.board ?? '–'} · Class ${b.class_level ?? '–'}, "${b.title}"`;
+  `${subjectName(b.subject ?? '')} · ${b.board ?? '–'} · Class ${b.class_level ?? '–'}${b.volume ? ` · Vol ${b.volume}` : ''}, "${b.title}"`;
 
 // What an import would meet on this server, as the question to confirm; null: nothing to ask.
 function question(waiting: ImportWaiting): string | null {
@@ -92,7 +92,7 @@ export function Documents() {
                 const state = stateOf(doc);
                 return (
                   <tr key={doc.id} className="click" onClick={() => navigate(`/documents/${doc.id}`)}>
-                    <td><b>{doc.title}</b><div className="muted small">{doc.filename}</div></td>
+                    <td><b>{doc.title}</b>{doc.volume ? <span className="muted"> · Vol {doc.volume}</span> : null}<div className="muted small">{doc.filename}</div></td>
                     <td>{subjectName(doc.subject)}</td>
                     <td>{doc.document_type === 'QUESTION_PAPER' ? `Paper ${doc.exam_year ?? ''}` : 'Textbook'}</td>
                     <td>{doc.board ?? '–'} · {doc.class_level ?? '–'}</td>
