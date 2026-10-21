@@ -171,6 +171,7 @@ export const SUBJECT_SLUGS: Record<string, string> = {
   SOCIAL_SCIENCE: 'social-science',
   ENGLISH: 'english',
   PHYSICS: 'physics',
+  CHEMISTRY: 'chemistry',
 };
 
 function classifyPath(doc: Doc): string {
@@ -221,5 +222,6 @@ export const SUBJECTS: Record<string, string> = {
   SOCIAL_SCIENCE: 'Social Science',
   ENGLISH: 'English',
   PHYSICS: 'Physics',
+  CHEMISTRY: 'Chemistry',
 };
 export const subjectName = (s: string) => SUBJECTS[s] ?? s;

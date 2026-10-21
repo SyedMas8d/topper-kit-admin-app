@@ -8,6 +8,7 @@ const BOARD_LABELS: Record<string, string> = { STATE: 'State Board', STATE_TAMIL
 // A subject named in the file ("10_state_english_book.pdf"), to suggest; never assumed.
 const NAMED: [RegExp, string][] = [
   [/physics/i, 'PHYSICS'],
+  [/chemistry/i, 'CHEMISTRY'],
   [/english/i, 'ENGLISH'],
   [/math/i, 'MATHEMATICS'],
   [/social/i, 'SOCIAL_SCIENCE'],
@@ -34,10 +35,10 @@ export function Upload() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Physics's PDF text scrambles its equations: it is read from its page images unless unticked.
+  // Physics's and Chemistry's PDF text scrambles their equations: read from page images unless unticked.
   function chooseSubject(next: string) {
     setSubject(next);
-    setFromImages(next === 'PHYSICS');
+    setFromImages(next === 'PHYSICS' || next === 'CHEMISTRY');
   }
 
   async function submit(event: React.FormEvent) {
@@ -145,7 +146,7 @@ export function Upload() {
             <input type="checkbox" checked={tamil || fromImages} disabled={tamil} onChange={(e) => setFromImages(e.target.checked)} />
             <span>
               <b>Read pages from images</b> (paid, about ₹0.28 a page): for a book whose PDF text scrambles its
-              equations, such as Class 11 and 12 Physics.{tamil ? ' Tamil-medium books are always read this way.' : ''}
+              equations, such as Class 11 and 12 Physics and Chemistry.{tamil ? ' Tamil-medium books are always read this way.' : ''}
             </span>
           </label>
         )}
