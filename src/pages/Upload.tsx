@@ -6,13 +6,16 @@ import { Notice } from '../components/Layout';
 const BOARDS = ['STATE', 'STATE_TAMIL', 'CBSE', 'ICSE', 'NIOS'];
 const BOARD_LABELS: Record<string, string> = { STATE: 'State Board', STATE_TAMIL: 'State Board (Tamil)' };
 // A subject named in the file ("10_state_english_book.pdf"), to suggest; never assumed.
+// The subject a file's name says. A Higher Secondary book's name also says "English" for its
+// medium ("Class_11_Botany_English_Volume_1"), so English comes after every other subject.
 const NAMED: [RegExp, string][] = [
   [/physics/i, 'PHYSICS'],
   [/chemistry/i, 'CHEMISTRY'],
-  [/english/i, 'ENGLISH'],
+  [/botany|zoology|biology/i, 'BIOLOGY'],
   [/math/i, 'MATHEMATICS'],
   [/social/i, 'SOCIAL_SCIENCE'],
   [/science/i, 'SCIENCE'],
+  [/english/i, 'ENGLISH'],
 ];
 const CLASSES = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
@@ -35,10 +38,11 @@ export function Upload() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Physics's and Chemistry's PDF text scrambles their equations: read from page images unless unticked.
+  // Physics's and Chemistry's PDF text scrambles their equations, and most Biology books are scans
+  // with no text: read from page images unless unticked.
   function chooseSubject(next: string) {
     setSubject(next);
-    setFromImages(next === 'PHYSICS' || next === 'CHEMISTRY');
+    setFromImages(next === 'PHYSICS' || next === 'CHEMISTRY' || next === 'BIOLOGY');
   }
 
   async function submit(event: React.FormEvent) {
@@ -52,7 +56,7 @@ export function Upload() {
     form.append('class_level', classLevel);
     form.append('document_type', type);
     if (type === 'QUESTION_PAPER') form.append('exam_year', year);
-    if (type === 'TEXTBOOK' && fromImages && !tamil) form.append('read_from_images', 'true');
+    if (fromImages && !tamil) form.append('read_from_images', 'true');
     if (type === 'TEXTBOOK' && volume) form.append('volume', volume);
     setBusy(true);
     setError(null);
@@ -84,7 +88,9 @@ export function Upload() {
               const classIn = chosen?.name.match(/class[_\s-]*(\d{1,2})/i);
               if (classIn && CLASSES.includes(classIn[1])) setClassLevel(classIn[1]);
               const volumeIn = chosen?.name.match(/vol(?:ume)?[_\s-]*(\d)/i);
-              setVolume(volumeIn ? volumeIn[1] : '');
+              // Biology is two books: Botany is its Volume 1, Zoology its Volume 2.
+              const biologyBook = /botany/i.test(chosen?.name ?? '') ? '1' : /zoology/i.test(chosen?.name ?? '') ? '2' : null;
+              setVolume(biologyBook ?? (volumeIn ? volumeIn[1] : ''));
               if (chosen && /paper|exam|question/i.test(chosen.name)) setType('QUESTION_PAPER');
             }}
           />
@@ -136,17 +142,19 @@ export function Upload() {
             Volume
             <select value={volume} onChange={(e) => setVolume(e.target.value)}>
               <option value="">— (a single book)</option>
-              <option value="1">Volume 1</option>
-              <option value="2">Volume 2</option>
+              <option value="1">{subject === 'BIOLOGY' ? 'Volume 1 (Botany)' : 'Volume 1'}</option>
+              <option value="2">{subject === 'BIOLOGY' ? 'Volume 2 (Zoology)' : 'Volume 2'}</option>
             </select>
           </label>
         )}
-        {type === 'TEXTBOOK' && (
+        {(type === 'TEXTBOOK' || !tamil) && (
           <label className="small" style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
             <input type="checkbox" checked={tamil || fromImages} disabled={tamil} onChange={(e) => setFromImages(e.target.checked)} />
             <span>
               <b>Read pages from images</b> (paid, about ₹0.28 a page): for a book whose PDF text scrambles its
-              equations, such as Class 11 and 12 Physics and Chemistry.{tamil ? ' Tamil-medium books are always read this way.' : ''}
+              equations, such as Class 11 and 12 Physics and Chemistry (Class 10 Mathematics too: its questions stay as printed, its
+              choices and search text come from the reading), and for a scan with no text at all (most Biology
+              books, the Biology paper).{tamil ? ' Tamil-medium books are always read this way.' : ''}
             </span>
           </label>
         )}
