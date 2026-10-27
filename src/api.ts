@@ -100,6 +100,15 @@ export type Doc = {
   created_at: string;
 };
 
+export type ManualQuestion = {
+  action: 'add' | 'accept';
+  kind?: string;
+  text?: string;
+  options?: { label: string; text: string }[];
+  answer?: string;
+  passage?: string;
+};
+
 export type Job = {
   id: string;
   document_id: string;
@@ -213,6 +222,14 @@ export const api = {
     call<{ page: number; checked: boolean }>(`/api/v1/admin/documents/${id}/pages/${page}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ words }),
     }),
+  // A left-out question added by hand, or accepted as left out; or the fix undone. Each returns
+  // the book's report as it now stands.
+  saveManualQuestion: (id: string, questionId: string, body: ManualQuestion) =>
+    call<Record<string, unknown>>(`/api/v1/admin/documents/${id}/manual-questions/${encodeURIComponent(questionId)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }),
+  deleteManualQuestion: (id: string, questionId: string) =>
+    call<Record<string, unknown>>(`/api/v1/admin/documents/${id}/manual-questions/${encodeURIComponent(questionId)}`, { method: 'DELETE' }),
   parents: (page: number, pageSize: number, q: string) =>
     call<ParentsPage>(`/api/v1/admin/parents?page=${page}&page_size=${pageSize}${q ? `&q=${encodeURIComponent(q)}` : ''}`),
 };

@@ -217,7 +217,9 @@ export function DocumentPage() {
         </div>
       </div>
 
-      {job?.result && <Report result={job.result} />}
+      {job?.result && (
+        <Report result={job.result} documentId={doc.id} onChange={(result) => setJob({ ...job, result })} />
+      )}
 
       <div className="card row spread">
         <div>

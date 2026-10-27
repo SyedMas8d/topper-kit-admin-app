@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { api } from '../api';
+import type { ManualQuestion } from '../api';
 
 type LeftOut = { reason: string; image: string | null };
 type Part = { part: string; questions: number; marks_each: number | null; answer_count: number | null };
 
 // The classify report, as the server returns it: a book's (chapters, topics, exercises ...)
 // or a paper's (parts, questions, links to the textbook).
-export function Report({ result }: { result: Record<string, unknown> }) {
-  return 'questions_by_kind' in result ? <PaperReport r={result} /> : <BookReport r={result} />;
+type Props = { result: Record<string, unknown>; documentId: string; onChange: (result: Record<string, unknown>) => void };
+
+export function Report({ result, documentId, onChange }: Props) {
+  return 'questions_by_kind' in result
+    ? <PaperReport r={result} />
+    : <BookReport r={result} documentId={documentId} onChange={onChange} />;
 }
 
 function Kinds({ kinds }: { kinds: Record<string, number> }) {
@@ -22,8 +27,24 @@ function Kinds({ kinds }: { kinds: Record<string, number> }) {
   );
 }
 
-function BookReport({ r }: { r: Record<string, unknown> }) {
+function BookReport({ r, documentId, onChange }: { r: Record<string, unknown>; documentId: string; onChange: Props['onChange'] }) {
   const leftOut = (r.questions_left_out ?? {}) as Record<string, LeftOut>;
+  const added = (r.added_by_hand ?? {}) as Record<string, string>;
+  const accepted = (r.accepted_left_out ?? {}) as Record<string, LeftOut>;
+  const notNeeded = (r.manual_not_needed ?? {}) as Record<string, string>;
+  const [editing, setEditing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function act(run: () => Promise<Record<string, unknown>>) {
+    setError(null);
+    try {
+      onChange(await run());
+      setEditing(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  const undo = (id: string) => act(() => api.deleteManualQuestion(documentId, id));
   const gaps = (r.exercise_gaps ?? {}) as Record<string, number[]>;
   const noHints = (r.chapters_without_hints ?? []) as number[];
   const renamed = (r.renamed_chapters ?? {}) as Record<string, string>;
@@ -60,13 +81,55 @@ function BookReport({ r }: { r: Record<string, unknown> }) {
               {Object.entries(leftOut).map(([id, item]) => (
                 <tr key={id}>
                   <td style={{ whiteSpace: 'nowrap' }}><b>{id}</b></td>
-                  <td>{item.reason}{item.image && <Crop path={item.image} />}</td>
+                  <td>
+                    {item.reason}
+                    {item.image && <Crop path={item.image} />}
+                    {editing === id ? (
+                      <FixForm
+                        reason={item.reason}
+                        onCancel={() => setEditing(null)}
+                        onSave={(body) => act(() => api.saveManualQuestion(documentId, id, body))}
+                      />
+                    ) : (
+                      <div className="row" style={{ marginTop: 6, gap: 8 }}>
+                        <button className="btn small" onClick={() => setEditing(id)}>Fix and add</button>
+                        <button className="btn soft small" onClick={() => act(() => api.saveManualQuestion(documentId, id, { action: 'accept' }))}>
+                          Accept: leave it out
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
+        {error && <div className="small" style={{ color: 'var(--red)' }}>{error}</div>}
       </div>
+      {(Object.keys(added).length > 0 || Object.keys(accepted).length > 0) && (
+        <div>
+          <h3>Dealt with by hand ({Object.keys(added).length + Object.keys(accepted).length})</h3>
+          <div className="small muted">Kept after every classify. Delete a fix to leave the question out again.</div>
+          <table>
+            <tbody>
+              {Object.entries(added).map(([id, what]) => (
+                <tr key={id}>
+                  <td style={{ whiteSpace: 'nowrap' }}><b>{id}</b></td>
+                  <td>Added by hand ({what.replace(/_/g, ' ').replace(' · added by hand', '')}){notNeeded[id] && <span className="muted"> · {notNeeded[id]}</span>}</td>
+                  <td><button className="btn soft small" onClick={() => undo(id)}>Delete fix</button></td>
+                </tr>
+              ))}
+              {Object.entries(accepted).map(([id, item]) => (
+                <tr key={id}>
+                  <td style={{ whiteSpace: 'nowrap' }}><b>{id}</b></td>
+                  <td className="muted">Accepted as left out: {item.reason}</td>
+                  <td><button className="btn soft small" onClick={() => undo(id)}>Delete fix</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -120,6 +183,68 @@ function Crop({ path }: { path: string }) {
         Show as printed
       </button>
       {error && <span className="small" style={{ color: 'var(--red)' }}> {error}</span>}
+    </div>
+  );
+}
+
+const KINDS: [string, string][] = [
+  ['mcq', 'Multiple choice'], ['assertion_reason', 'Assertion and reason'], ['fill_blank', 'Fill in the blank'],
+  ['true_false', 'True or false'], ['short_answer', 'Short answer'], ['long_answer', 'Long answer'],
+  ['numerical', 'Numerical'], ['hots', 'HOTS'], ['writing', 'Writing task'], ['problem', 'Maths problem'],
+];
+const WITH_CHOICES = new Set(['mcq', 'assertion_reason']);
+const KEYED = new Set(['mcq', 'assertion_reason', 'fill_blank', 'true_false', 'numerical']);
+const ANSWER_HINT: Record<string, string> = {
+  mcq: 'the right choice\'s letter: c', assertion_reason: 'the right choice\'s letter: a',
+  fill_blank: 'the missing word(s), commas between', true_false: 'true or false', numerical: 'a number and its unit: 9.8 m/s²',
+};
+
+// A left-out question written out by hand from its crop: its kind, words, choices and, for an
+// objective one, its answer (left empty, the answer is worked out and checked as for any other).
+function FixForm({ reason, onSave, onCancel }: { reason: string; onSave: (q: ManualQuestion) => void; onCancel: () => void }) {
+  const listening = /listening/i.test(reason);
+  const [kind, setKind] = useState(listening ? 'short_answer' : 'mcq');
+  const [text, setText] = useState('');
+  const [choices, setChoices] = useState(['', '', '', '']);
+  const [answer, setAnswer] = useState('');
+  const [passage, setPassage] = useState('');
+  return (
+    <div className="card stack" style={{ marginTop: 8 }}>
+      <label className="field">
+        Kind
+        <select value={kind} onChange={(e) => setKind(e.target.value)}>
+          {KINDS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+        </select>
+      </label>
+      <label className="field">
+        The question, as printed
+        <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+      </label>
+      {WITH_CHOICES.has(kind) && choices.map((choice, i) => (
+        <label className="field" key={i}>
+          Choice {'abcd'[i]}
+          <input value={choice} onChange={(e) => setChoices(choices.map((c, j) => (j === i ? e.target.value : c)))} />
+        </label>
+      ))}
+      {KEYED.has(kind) && (
+        <label className="field">
+          Answer (optional: {ANSWER_HINT[kind]})
+          <input value={answer} onChange={(e) => setAnswer(e.target.value)} />
+        </label>
+      )}
+      {listening && (
+        <label className="field">
+          The passage the student listens to (read aloud by the phone)
+          <textarea rows={5} value={passage} onChange={(e) => setPassage(e.target.value)} />
+        </label>
+      )}
+      <div className="row" style={{ gap: 8 }}>
+        <button className="btn small" onClick={() => onSave({
+          action: 'add', kind, text, answer: answer || undefined, passage: passage || undefined,
+          options: WITH_CHOICES.has(kind) ? choices.map((c, i) => ({ label: 'abcd'[i], text: c })) : [],
+        })}>Save and add</button>
+        <button className="btn soft small" onClick={onCancel}>Cancel</button>
+      </div>
     </div>
   );
 }
