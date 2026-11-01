@@ -17,16 +17,22 @@ const describe = (b: BookSummary) =>
 
 // What an import would meet on this server, as the question to confirm; null: nothing to ask.
 function question(waiting: ImportWaiting): string | null {
+  // A first volume's export brings its subject's question papers.
+  const papers = waiting.papers ?? [];
+  const years = (list: typeof papers) => list.map((p) => p.exam_year ?? '?').join(', ');
+  const twice = papers.filter((p) => !p.same_id && p.same_year);
+  const about = (papers.length ? `\n\nIt also brings ${papers.length} question paper${papers.length === 1 ? '' : 's'} (${years(papers)}); any already here are replaced.` : '')
+    + (twice.length ? `\n\nThis server already has a ${years(twice)} paper of this subject from elsewhere: importing adds a second one of that year.` : '');
   if (waiting.same_id) {
     return `${describe(waiting.same_id)} is already on this server${waiting.same_id.published ? ' and published' : ''}.\n\n`
       + 'Replace it with this export? Its chapters, questions, answer keys and search passages are replaced, '
-      + 'and it stays unpublished until you publish it again. Students\' progress is kept.';
+      + 'and it stays unpublished until you publish it again. Students\' progress is kept.' + about;
   }
   if (waiting.same_book) {
     return `This server already has ${describe(waiting.same_book)}.\n\n`
-      + `Import ${describe(waiting.document)} as well? Students would then see two of the same book.`;
+      + `Import ${describe(waiting.document)} as well? Students would then see two of the same book.` + about;
   }
-  return null;
+  return twice.length ? `Import ${describe(waiting.document)}?` + about : null;
 }
 
 export function Documents() {
@@ -46,6 +52,10 @@ export function Documents() {
       if (ask && !window.confirm(ask)) return;
       setImporting(`Importing "${waiting.document.title}"…`);
       const done = await api.importBook(waiting.token);
+      if (done.links_waiting) {
+        window.alert(`Imported, with ${done.papers} question paper${done.papers === 1 ? '' : 's'}. Their questions from the other `
+          + 'volume are linked when you import that volume too.');
+      }
       navigate(`/documents/${done.document_id}`);
     } catch (e) {
       setError((e as Error).message);

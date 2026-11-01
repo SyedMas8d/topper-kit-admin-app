@@ -78,9 +78,12 @@ export type Subject = 'SCIENCE' | 'MATHEMATICS' | 'SOCIAL_SCIENCE' | 'ENGLISH' |
 export type DocumentType = 'TEXTBOOK' | 'QUESTION_PAPER';
 
 // A book bundle uploaded for import, waiting for a confirm: what it is, and what it would meet.
-export type BookSummary = { id: string; title: string; board: string | null; class_level: string | null; subject: Subject | null; document_type: DocumentType; volume?: number | null; published: boolean };
-export type ImportWaiting = { token: string; document: BookSummary; same_id: BookSummary | null; same_book: BookSummary | null };
-export type ImportDone = { document_id: string; title: string; rows: Record<string, number>; chunks: number; files: number };
+export type BookSummary = { id: string; title: string; board: string | null; class_level: string | null; subject: Subject | null; document_type: DocumentType; volume?: number | null; exam_year?: number | null; published: boolean };
+// A question paper travelling in a first volume's bundle: already here, or another of its year here.
+export type PaperWaiting = { title: string; exam_year: number | null; same_id: boolean; same_year: BookSummary | null };
+export type ImportWaiting = { token: string; document: BookSummary; same_id: BookSummary | null; same_book: BookSummary | null; papers?: PaperWaiting[] };
+// papers: imported with the book; links_waiting: their links to a volume not here yet; linked: made to this volume.
+export type ImportDone = { document_id: string; title: string; rows: Record<string, number>; chunks: number; files: number; papers?: number; links_waiting?: number; linked?: number };
 
 export type Doc = {
   id: string;

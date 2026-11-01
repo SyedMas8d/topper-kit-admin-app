@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, subjectName } from '../api';
 import type { Doc, Job, ReadingStatus } from '../api';
 import { Notice } from '../components/Layout';
+import { QuestionPapers } from '../components/QuestionPapers';
 import { Report } from '../components/Report';
 import { stateOf } from './Documents';
 
@@ -220,6 +221,8 @@ export function DocumentPage() {
       {job?.result && (
         <Report result={job.result} documentId={doc.id} onChange={(result) => setJob({ ...job, result })} />
       )}
+
+      {!paper && <QuestionPapers book={doc} />}
 
       <div className="card row spread">
         <div>

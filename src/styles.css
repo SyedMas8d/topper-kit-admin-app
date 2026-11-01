@@ -51,6 +51,8 @@ main.wrap { padding-top: 28px; padding-bottom: 60px; display: grid; gap: 20px; }
 .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .spread { justify-content: space-between; }
 .stack { display: grid; gap: 12px; }
+.papers { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 8px; }
+.papers li { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; }
 .muted { color: var(--ink-soft); }
 .small { font-size: 13px; }
 .btn { border: 0; border-radius: 999px; padding: 9px 20px; font-weight: 800; cursor: pointer; background: var(--indigo); color: #fff; }
