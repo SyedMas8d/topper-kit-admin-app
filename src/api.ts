@@ -174,6 +174,59 @@ export type ReadingStatus = {
 // boxes: each doubt's place on the image, [x0, y0, x1, y1] as fractions of the page (null: unknown).
 export type PageToCheck = { page: number; words: string[]; doubts: Doubt[]; checked: boolean; readers: string; image: string; boxes: ([number, number, number, number] | null)[] };
 
+// Credits. Settings are the server's raw values: costs and the trial in units (tenths of a
+// credit: 0.5 credit is 5), days in days, credits_on 1 or 0. Everything else is in credits.
+export type CreditSettings = Record<string, number>;
+export type CreditPlan = {
+  code: string;
+  plan_group: 'pass_1m' | 'pass_3m' | 'pass_6m' | 'topup';
+  audience: 'normal' | 'family' | 'any';
+  name: string;
+  months: number;
+  price_rupees: number;
+  credits_per_month: number;
+  active: boolean; // on sale
+};
+export type PlanChange = { name?: string; price_rupees?: number; credits_per_month?: number; active?: boolean };
+export type OrderLine = { student_id: string; student_name: string; plan_code: string; plan_name: string; price_rupees: number; credits_per_month: number; months: number };
+export type CreditOrder = {
+  id: string;
+  parent_email: string;
+  status: 'pending' | 'paid' | 'failed';
+  total_rupees: number;
+  created_at: string;
+  paid_at: string | null;
+  credits_given: boolean;
+  lines: OrderLine[];
+};
+export type OrdersPage = { total: number; page: number; page_size: number; paid_rupees: number; orders: CreditOrder[] };
+export type ChildCredits = {
+  student_id: string;
+  name: string;
+  board: string;
+  class_level: string;
+  parent_email: string;
+  balance: number;
+  upcoming: number;
+  next_expiry: string | null;
+  next_expiry_credits: number;
+  pass_name: string | null;
+  pass_until: string | null;
+};
+export type LedgerKind = 'all' | 'grant' | 'spend';
+export type LedgerEntry = {
+  kind: 'grant' | 'spend';
+  at: string;
+  credits: number;
+  source?: string | null;
+  note?: string | null;
+  action?: string | null;
+  refunded: boolean;
+  expires?: string | null;
+  remaining?: number | null;
+};
+export type LedgerPage = { entries: LedgerEntry[]; next_cursor: string | null };
+
 // --- Calls ---------------------------------------------------------------------------------
 
 // The classify routes are named by board and subject: /api/v1/admin/state/classify/science.
@@ -233,6 +286,27 @@ export const api = {
     }),
   deleteManualQuestion: (id: string, questionId: string) =>
     call<Record<string, unknown>>(`/api/v1/admin/documents/${id}/manual-questions/${encodeURIComponent(questionId)}`, { method: 'DELETE' }),
+  creditSettings: () => call<{ values: CreditSettings }>('/api/v1/admin/credits/settings'),
+  saveCreditSettings: (values: CreditSettings) =>
+    call<{ values: CreditSettings }>('/api/v1/admin/credits/settings', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values }),
+    }),
+  creditPlans: () => call<CreditPlan[]>('/api/v1/admin/credits/plans'),
+  savePlan: (code: string, change: PlanChange) =>
+    call<CreditPlan>(`/api/v1/admin/credits/plans/${encodeURIComponent(code)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(change),
+    }),
+  creditOrders: (page: number, pageSize: number, status: string, q: string) =>
+    call<OrdersPage>(
+      `/api/v1/admin/credits/orders?page=${page}&page_size=${pageSize}${status ? `&status=${status}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`,
+    ),
+  childCredits: (studentId: string) => call<ChildCredits>(`/api/v1/admin/credits/students/${studentId}`),
+  childHistory: (studentId: string, kind: LedgerKind, cursor: string | null) =>
+    call<LedgerPage>(
+      `/api/v1/admin/credits/students/${studentId}/history?kind=${kind}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+    ),
+  gift: (studentId: string, credits: number, days: number, note: string) =>
+    call<{ grant_id: string; credits: number }>(`/api/v1/admin/credits/students/${studentId}/gift`, json({ credits, days, note })),
   parents: (page: number, pageSize: number, q: string) =>
     call<ParentsPage>(`/api/v1/admin/parents?page=${page}&page_size=${pageSize}${q ? `&q=${encodeURIComponent(q)}` : ''}`),
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import type { Child, ParentsPage as Page } from '../api';
 import { Notice } from '../components/Layout';
@@ -25,6 +25,7 @@ function ChildLine({ child }: { child: Child }) {
     <div className="row small" style={{ gap: 8 }}>
       <b>{child.name}</b>
       <span className="muted">{child.board} · Class {child.class_level}</span>
+      <Link to={`/credits/children/${child.id}`}>Credits</Link>
       {child.studying_now ? (
         <span className="pill live">Studying now</span>
       ) : (

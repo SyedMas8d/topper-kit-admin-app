@@ -4,6 +4,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './styles.css';
 import { session } from './api';
 import { Layout } from './components/Layout';
+import { ChildCreditsPage } from './pages/ChildCreditsPage';
+import { CreditsPage } from './pages/CreditsPage';
 import { DocumentPage } from './pages/DocumentPage';
 import { Documents } from './pages/Documents';
 import { Login } from './pages/Login';
@@ -29,6 +31,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/documents/:id/pages/:page" element={<Guarded><PageReview /></Guarded>} />
         <Route path="/usage" element={<Guarded><UsagePage /></Guarded>} />
         <Route path="/parents" element={<Guarded><ParentsPage /></Guarded>} />
+        <Route path="/credits" element={<Guarded><CreditsPage /></Guarded>} />
+        <Route path="/credits/children/:id" element={<Guarded><ChildCreditsPage /></Guarded>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
