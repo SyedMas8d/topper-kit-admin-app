@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import type { CreditPlan, CreditSettings, OrdersPage } from '../api';
+import type { CreditPlan, CreditSettings, CreditSettingsOut, OrdersPage } from '../api';
 import { Notice } from '../components/Layout';
 
 // Credits: what each action costs and the trial (Settings), what parents can buy (Plans), and what
@@ -40,61 +40,98 @@ export function CreditsPage() {
 // ---- Settings ------------------------------------------------------------------------------------
 
 // unit: 'credits' are stored as tenths (0.5 credit is 5); 'days' as they are.
-const FIELDS: { key: string; label: string; help: string; unit: 'credits' | 'days' }[] = [
-  { key: 'cost_question', label: 'Homework question', help: 'Each question to the tutor (not Mathematics).', unit: 'credits' },
-  { key: 'cost_maths_question', label: 'Maths question or worked answer', help: 'The Maths tutor, and Show me how on a Maths exercise (a stronger model).', unit: 'credits' },
-  { key: 'cost_exercise', label: 'Exercise help', help: 'Show me how, or checking a written answer. Checking against the book’s key is always free.', unit: 'credits' },
-  { key: 'cost_photo', label: 'Photo or picture', help: 'Reading a photo, or a picture asked about.', unit: 'credits' },
-  { key: 'cost_download', label: 'Chapter PDF', help: 'The same chapter again within a day is free.', unit: 'credits' },
+type Field = { key: string; label: string; help: string; unit: 'credits' | 'days' };
+
+// The same for every class.
+const GENERAL: Field[] = [
   { key: 'trial_units', label: 'Trial credits', help: 'Given to each new child, once.', unit: 'credits' },
   { key: 'trial_days', label: 'Trial lasts', help: 'Days the trial credits can be used.', unit: 'days' },
   { key: 'validity_days', label: 'Credits last', help: 'Days each month’s or top-up’s credits can be used (unused ones carry over until then).', unit: 'days' },
   { key: 'period_days', label: 'Pass month', help: 'Days between a 3- or 6-month pass’s monthly credits.', unit: 'days' },
+  { key: 'cost_photo', label: 'Photo or picture', help: 'Reading a photo, or a picture asked about.', unit: 'credits' },
+  { key: 'cost_download', label: 'Chapter PDF', help: 'The same chapter again within a day is free.', unit: 'credits' },
 ];
 
-const shown = (key: string, value: number) => (FIELDS.find((f) => f.key === key)?.unit === 'credits' ? value / 10 : value);
+// A class may have its own: higher classes' answers are longer and harder.
+const BY_CLASS: Field[] = [
+  { key: 'cost_question', label: 'Homework question', help: 'Each question to the tutor (not Mathematics).', unit: 'credits' },
+  { key: 'cost_maths_question', label: 'Maths question or worked answer', help: 'The Maths tutor, and Show me how on a Maths exercise.', unit: 'credits' },
+  { key: 'cost_exercise', label: 'Exercise help', help: 'Show me how, or checking a written answer. Checking against the book’s key is free.', unit: 'credits' },
+];
+
+const shownValue = (field: Field, value: number) => String(field.unit === 'credits' ? value / 10 : value);
+
+// A typed value as the server keeps it, or why it cannot be.
+function parse(field: Field, text: string): { value: number } | { problem: string } {
+  const number = Number(text.trim());
+  if (text.trim() === '' || !Number.isFinite(number) || number < 0) {
+    return { problem: field.unit === 'days' ? 'a whole number of days' : 'a number of credits, such as 0.5' };
+  }
+  if (field.unit === 'days') {
+    return Number.isInteger(number) ? { value: number } : { problem: 'a whole number of days' };
+  }
+  const units = Math.round(number * 10);
+  return Math.abs(number * 10 - units) > 1e-9 ? { problem: 'credits go in steps of 0.1' } : { value: units };
+}
 
 function Settings() {
   const [saved, setSaved] = useState<CreditSettings | null>(null);
+  const [classes, setClasses] = useState<string[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const take = useCallback((values: CreditSettings) => {
-    setSaved(values);
-    setDraft(Object.fromEntries(FIELDS.map((f) => [f.key, String(shown(f.key, values[f.key] ?? 0))])));
+  const take = useCallback((out: CreditSettingsOut) => {
+    setSaved(out.values);
+    setClasses(out.classes);
+    const typed: Record<string, string> = {};
+    for (const field of [...GENERAL, ...BY_CLASS]) typed[field.key] = shownValue(field, out.values[field.key] ?? 0);
+    for (const field of BY_CLASS) {
+      for (const level of out.classes) {
+        const key = `${field.key}@${level}`;
+        typed[key] = key in out.values ? shownValue(field, out.values[key]) : '';
+      }
+    }
+    setDraft(typed);
   }, []);
 
   useEffect(() => {
-    api.creditSettings().then(({ values }) => take(values)).catch((err: Error) => setError(err.message));
+    api.creditSettings().then(take).catch((err: Error) => setError(err.message));
   }, [take]);
 
   if (!saved) return error ? <Notice tone="error">{error}</Notice> : <div className="card muted">Loading…</div>;
 
-  // Only what changed is sent; credits go back to tenths.
+  // Only what changed is sent. A class's box left empty pays the default (its own value removed).
   const changes: CreditSettings = {};
+  const remove: string[] = [];
   let invalid: string | null = null;
-  for (const field of FIELDS) {
-    const text = draft[field.key]?.trim() ?? '';
-    const number = Number(text);
-    const value = field.unit === 'credits' ? Math.round(number * 10) : number;
-    if (text === '' || !Number.isFinite(number) || number < 0 || (field.unit === 'days' && !Number.isInteger(number))) {
-      invalid = `${field.label}: ${field.unit === 'days' ? 'a whole number of days' : 'a number of credits, such as 0.5'}.`;
-    } else if (field.unit === 'credits' && Math.abs(number * 10 - value) > 1e-9) {
-      invalid = `${field.label}: credits go in steps of 0.1.`;
-    } else if (value !== saved[field.key]) {
-      changes[field.key] = value;
+  for (const field of [...GENERAL, ...BY_CLASS]) {
+    const read = parse(field, draft[field.key] ?? '');
+    if ('problem' in read) invalid = `${field.label}: ${read.problem}.`;
+    else if (read.value !== saved[field.key]) changes[field.key] = read.value;
+  }
+  for (const field of BY_CLASS) {
+    for (const level of classes) {
+      const key = `${field.key}@${level}`;
+      const text = draft[key] ?? '';
+      if (text.trim() === '') {
+        if (key in saved) remove.push(key);
+        continue;
+      }
+      const read = parse(field, text);
+      if ('problem' in read) invalid = `Class ${level}, ${field.label}: ${read.problem}.`;
+      else if (read.value !== saved[key]) changes[key] = read.value;
     }
   }
-  const dirty = Object.keys(changes).length > 0;
+  const dirty = Object.keys(changes).length > 0 || remove.length > 0;
 
-  async function save(values: CreditSettings, message: string) {
+  async function save(values: CreditSettings, drop: string[], message: string) {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      take((await api.saveCreditSettings(values)).values);
+      take(await api.saveCreditSettings(values, drop));
       setNotice(message);
     } catch (err) {
       setError((err as Error).message);
@@ -110,8 +147,18 @@ function Settings() {
         ? 'Turn charging off? Every paid feature opens for every child and nothing is charged, until you turn it on again.'
         : 'Turn charging on? Paid features need credits again.',
     );
-    if (sure) await save({ credits_on: on ? 0 : 1 }, on ? 'Charging is off: everything is open.' : 'Charging is on.');
+    if (sure) await save({ credits_on: on ? 0 : 1 }, [], on ? 'Charging is off: everything is open.' : 'Charging is on.');
   }
+
+  const box = (key: string, placeholder?: string) => (
+    <input
+      inputMode="decimal"
+      value={draft[key] ?? ''}
+      placeholder={placeholder}
+      onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+      style={{ width: '100%' }}
+    />
+  );
 
   return (
     <>
@@ -129,31 +176,67 @@ function Settings() {
           {saved.credits_on === 1 ? 'Turn off' : 'Turn on'}
         </button>
       </div>
+
       <div className="card stack">
+        <h2>General</h2>
+        <div className="small muted">The same for every class.</div>
         <div className="grid2">
-          {FIELDS.map((field) => (
+          {GENERAL.map((field) => (
             <label key={field.key} className="field">
               {field.label} ({field.unit})
-              <input
-                inputMode="decimal"
-                value={draft[field.key] ?? ''}
-                onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
-              />
+              {box(field.key)}
               <span className="small muted" style={{ fontWeight: 500 }}>{field.help}</span>
             </label>
           ))}
         </div>
-        {invalid && <Notice tone="error">{invalid}</Notice>}
-        <div className="row">
-          <button className="btn" disabled={!dirty || !!invalid || busy} onClick={() => save(changes, 'Saved. It applies from the next action.')}>
-            Save changes
-          </button>
-          {dirty && (
-            <button className="btn soft" onClick={() => take(saved)} disabled={busy}>
-              Undo
-            </button>
-          )}
+      </div>
+
+      <div className="card stack">
+        <h2>Costs by class (credits)</h2>
+        <div className="small muted">
+          A class left empty pays the default. Classes appear here once a textbook for them is uploaded.
         </div>
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 120 }}>Class</th>
+              {BY_CLASS.map((field) => (
+                <th key={field.key} title={field.help}>{field.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Defaults</b></td>
+              {BY_CLASS.map((field) => <td key={field.key}>{box(field.key)}</td>)}
+            </tr>
+            {classes.map((level) => (
+              <tr key={level}>
+                <td><b>Class {level}</b></td>
+                {BY_CLASS.map((field) => (
+                  <td key={field.key}>{box(`${field.key}@${level}`, `${shownValue(field, saved[field.key])} (default)`)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="small muted">
+          {BY_CLASS.map((field) => (
+            <div key={field.key}><b>{field.label}:</b> {field.help}</div>
+          ))}
+        </div>
+      </div>
+
+      {invalid && <Notice tone="error">{invalid}</Notice>}
+      <div className="row">
+        <button className="btn" disabled={!dirty || !!invalid || busy} onClick={() => save(changes, remove, 'Saved. It applies from the next action.')}>
+          Save changes
+        </button>
+        {dirty && (
+          <button className="btn soft" onClick={() => take({ values: saved, classes })} disabled={busy}>
+            Undo
+          </button>
+        )}
       </div>
     </>
   );

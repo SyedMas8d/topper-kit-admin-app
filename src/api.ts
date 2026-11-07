@@ -177,6 +177,7 @@ export type PageToCheck = { page: number; words: string[]; doubts: Doubt[]; chec
 // Credits. Settings are the server's raw values: costs and the trial in units (tenths of a
 // credit: 0.5 credit is 5), days in days, credits_on 1 or 0. Everything else is in credits.
 export type CreditSettings = Record<string, number>;
+export type CreditSettingsOut = { values: CreditSettings; classes: string[] };
 export type CreditPlan = {
   code: string;
   plan_group: 'pass_1m' | 'pass_3m' | 'pass_6m' | 'topup';
@@ -286,10 +287,12 @@ export const api = {
     }),
   deleteManualQuestion: (id: string, questionId: string) =>
     call<Record<string, unknown>>(`/api/v1/admin/documents/${id}/manual-questions/${encodeURIComponent(questionId)}`, { method: 'DELETE' }),
-  creditSettings: () => call<{ values: CreditSettings }>('/api/v1/admin/credits/settings'),
-  saveCreditSettings: (values: CreditSettings) =>
-    call<{ values: CreditSettings }>('/api/v1/admin/credits/settings', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values }),
+  // classes: those with a textbook uploaded, highest first; each can have its own question costs.
+  creditSettings: () => call<CreditSettingsOut>('/api/v1/admin/credits/settings'),
+  // remove: class costs ("cost_question@12") to drop, so that class pays the default again.
+  saveCreditSettings: (values: CreditSettings, remove: string[] = []) =>
+    call<CreditSettingsOut>('/api/v1/admin/credits/settings', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values, remove }),
     }),
   creditPlans: () => call<CreditPlan[]>('/api/v1/admin/credits/plans'),
   savePlan: (code: string, change: PlanChange) =>
