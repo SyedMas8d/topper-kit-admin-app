@@ -110,3 +110,12 @@ textarea.tamil-text { width: 100%; font: inherit; font-size: 16px; line-height: 
 .page-box.script { background: rgba(220, 38, 38, 0.25); outline: 2px solid var(--red); }
 .page-box.settled { background: rgba(22, 163, 74, 0.18); outline: 1px solid var(--green); }
 .page-box.open { outline: 3px solid var(--indigo); outline-offset: 2px; }
+
+/* Fold: a card opened and closed by its heading */
+.fold > summary { list-style: none; cursor: pointer; display: grid; gap: 2px; position: relative; padding-left: 26px; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: '›'; position: absolute; left: 4px; top: -2px; font-size: 24px; font-weight: 800; color: var(--indigo); transition: transform .15s; }
+.fold[open] > summary::before { transform: rotate(90deg); }
+.fold-head { display: flex; align-items: center; gap: 10px; }
+.fold-body { margin-top: 16px; }
+.fold.nested { padding: 14px 18px; background: var(--bg); border-color: var(--line); }

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import type { CreditPlan, CreditSettings, CreditSettingsOut, OrdersPage } from '../api';
+import type { CreditPlan, CreditSettings, CreditSettingsOut, OrdersPage, PlanClasses, PlanForClass } from '../api';
+import { Fold } from '../components/Fold';
 import { Notice } from '../components/Layout';
 
 // Credits: what each action costs and the trial (Settings), what parents can buy (Plans), and what
@@ -177,9 +178,7 @@ function Settings() {
         </button>
       </div>
 
-      <div className="card stack">
-        <h2>General</h2>
-        <div className="small muted">The same for every class.</div>
+      <Fold title="General" hint="The same for every class: trial, how long credits last, photos and PDFs." open>
         <div className="grid2">
           {GENERAL.map((field) => (
             <label key={field.key} className="field">
@@ -189,43 +188,47 @@ function Settings() {
             </label>
           ))}
         </div>
-      </div>
+      </Fold>
 
-      <div className="card stack">
-        <h2>Costs by class (credits)</h2>
-        <div className="small muted">
-          A class left empty pays the default. Classes appear here once a textbook for them is uploaded.
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: 120 }}>Class</th>
-              {BY_CLASS.map((field) => (
-                <th key={field.key} title={field.help}>{field.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><b>Defaults</b></td>
-              {BY_CLASS.map((field) => <td key={field.key}>{box(field.key)}</td>)}
-            </tr>
-            {classes.map((level) => (
-              <tr key={level}>
-                <td><b>Class {level}</b></td>
-                {BY_CLASS.map((field) => (
-                  <td key={field.key}>{box(`${field.key}@${level}`, `${shownValue(field, saved[field.key])} (default)`)}</td>
-                ))}
-              </tr>
+      <Fold
+        title="Costs by class (credits)"
+        hint="Questions, Maths and exercise help. A class left empty pays the default."
+        open
+      >
+        <Fold title="Defaults" hint="For every class without its own." level={3} nested open>
+          <div className="grid2">
+            {BY_CLASS.map((field) => (
+              <label key={field.key} className="field">
+                {field.label}
+                {box(field.key)}
+                <span className="small muted" style={{ fontWeight: 500 }}>{field.help}</span>
+              </label>
             ))}
-          </tbody>
-        </table>
-        <div className="small muted">
-          {BY_CLASS.map((field) => (
-            <div key={field.key}><b>{field.label}:</b> {field.help}</div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </Fold>
+        {classes.map((level) => {
+          const own = BY_CLASS.filter((field) => (draft[`${field.key}@${level}`] ?? '').trim() !== '').length;
+          return (
+            <Fold
+              key={level}
+              title={`Class ${level}`}
+              badge={own > 0 ? <span className="pill warn">{own} of {BY_CLASS.length} own</span> : <span className="pill hidden">defaults</span>}
+              level={3}
+              nested
+            >
+              <div className="grid2">
+                {BY_CLASS.map((field) => (
+                  <label key={field.key} className="field">
+                    {field.label}
+                    {box(`${field.key}@${level}`, `${shownValue(field, saved[field.key])} (default)`)}
+                  </label>
+                ))}
+              </div>
+            </Fold>
+          );
+        })}
+        {classes.length === 0 && <div className="small muted">Classes appear here once a textbook for them is uploaded.</div>}
+      </Fold>
 
       {invalid && <Notice tone="error">{invalid}</Notice>}
       <div className="row">
@@ -321,11 +324,11 @@ function Plans() {
     <>
       {error && <Notice tone="error">{error}</Notice>}
       {notice && <Notice tone="ok">{notice}</Notice>}
-      <Notice tone="info">
-        A pass gives its credits every month; a 3-month pass gives them three times. The family price applies to each child when
-        an order has passes for two or more children. Changes apply to new orders; orders already made keep their price.
-      </Notice>
-      <div className="card">
+      <Fold title="Default plans" hint="Names, on or off sale, and the price and credits for every class without its own." open>
+        <Notice tone="info">
+          A pass gives its credits every month; a 3-month pass gives them three times. The family price applies to each child
+          when two or more children have a pass. Changes apply to new orders; orders already made keep their price.
+        </Notice>
         {plans === null ? (
           <div className="muted">Loading…</div>
         ) : (
@@ -355,8 +358,136 @@ function Plans() {
             </tbody>
           </table>
         )}
-      </div>
+      </Fold>
+      {plans && <ClassPlans plans={plans} />}
     </>
+  );
+}
+
+// Each class's own price and credits for every plan. An empty box is the default (the plan above).
+function ClassPlans({ plans }: { plans: CreditPlan[] }) {
+  const [saved, setSaved] = useState<PlanClasses | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const box = (code: string, level: string, what: 'price' | 'credits') => `${code}@${level}:${what}`;
+
+  const take = useCallback((out: PlanClasses) => {
+    setSaved(out);
+    const typed: Record<string, string> = {};
+    for (const v of out.values) {
+      if (v.price_rupees !== null) typed[box(v.code, v.class_level, 'price')] = String(v.price_rupees);
+      if (v.credits_per_month !== null) typed[box(v.code, v.class_level, 'credits')] = String(v.credits_per_month);
+    }
+    setDraft(typed);
+  }, []);
+
+  useEffect(() => {
+    api.planClasses().then(take).catch((err: Error) => setError(err.message));
+  }, [take]);
+
+  if (!saved) return error ? <Notice tone="error">{error}</Notice> : null;
+  if (saved.classes.length === 0) return null;
+
+  // Only the plan and class pairs that changed are sent, each with both of its values.
+  const changes: PlanForClass[] = [];
+  const problems: string[] = [];
+  for (const level of saved.classes) {
+    for (const plan of plans) {
+      const before = saved.values.find((v) => v.code === plan.code && v.class_level === level);
+      const typed: Record<'price' | 'credits', number | null> = { price: null, credits: null };
+      for (const what of ['price', 'credits'] as const) {
+        const text = (draft[box(plan.code, level, what)] ?? '').trim();
+        const n = Number(text);
+        if (text === '') continue;
+        if (!Number.isFinite(n) || n < 0) {
+          problems.push(`Class ${level}, ${plan.name}: ${what === 'price' ? 'a price in rupees' : 'a number of credits'}.`);
+        } else {
+          typed[what] = n;
+        }
+      }
+      if (typed.price !== (before?.price_rupees ?? null) || typed.credits !== (before?.credits_per_month ?? null)) {
+        changes.push({ code: plan.code, class_level: level, price_rupees: typed.price, credits_per_month: typed.credits });
+      }
+    }
+  }
+  const invalid = problems[0] ?? null;
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      take(await api.savePlanClasses(changes));
+      setNotice('Saved. It applies to new orders.');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Fold title="Plans by class" hint="A class’s own price and credits for each plan. An empty box is the default plan’s." open>
+      {error && <Notice tone="error">{error}</Notice>}
+      {notice && <Notice tone="ok">{notice}</Notice>}
+      {saved.classes.map((level) => {
+        const own = saved.values.filter((v) => v.class_level === level).length;
+        return (
+        <Fold
+          key={level}
+          title={`Class ${level}`}
+          badge={own > 0 ? <span className="pill warn">{own} plan{own === 1 ? '' : 's'} own</span> : <span className="pill hidden">defaults</span>}
+          level={3}
+          nested
+        >
+          <table>
+            <thead>
+              <tr>
+                <th>Plan</th>
+                <th>Price (₹)</th>
+                <th>Credits / month</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plans.map((plan) => (
+                <tr key={plan.code} style={plan.active ? undefined : { opacity: 0.6 }}>
+                  <td>
+                    <b>{plan.name}</b>
+                    <div className="small muted">{AUDIENCE[plan.audience]}</div>
+                  </td>
+                  {(['price', 'credits'] as const).map((what) => (
+                    <td key={what}>
+                      <input
+                        inputMode="decimal"
+                        value={draft[box(plan.code, level, what)] ?? ''}
+                        placeholder={`${what === 'price' ? plan.price_rupees : plan.credits_per_month} (default)`}
+                        onChange={(e) => setDraft({ ...draft, [box(plan.code, level, what)]: e.target.value })}
+                        style={{ width: 150 }}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Fold>
+        );
+      })}
+      {invalid && <Notice tone="error">{invalid}</Notice>}
+      <div className="row">
+        <button className="btn" disabled={changes.length === 0 || !!invalid || busy} onClick={save}>
+          Save class prices
+        </button>
+        {changes.length > 0 && (
+          <button className="btn soft" onClick={() => take(saved)} disabled={busy}>
+            Undo
+          </button>
+        )}
+      </div>
+    </Fold>
   );
 }
 

@@ -188,6 +188,9 @@ export type CreditPlan = {
   credits_per_month: number;
   active: boolean; // on sale
 };
+// A plan's price and credits for one class; null: the plan's own (the default).
+export type PlanForClass = { code: string; class_level: string; price_rupees: number | null; credits_per_month: number | null };
+export type PlanClasses = { classes: string[]; values: PlanForClass[] };
 export type PlanChange = { name?: string; price_rupees?: number; credits_per_month?: number; active?: boolean };
 export type OrderLine = { student_id: string; student_name: string; plan_code: string; plan_name: string; price_rupees: number; credits_per_month: number; months: number };
 export type CreditOrder = {
@@ -208,6 +211,7 @@ export type ChildCredits = {
   class_level: string;
   parent_email: string;
   balance: number;
+  total: number; // what the balance is out of: given in the grants usable now
   upcoming: number;
   next_expiry: string | null;
   next_expiry_credits: number;
@@ -298,6 +302,12 @@ export const api = {
   savePlan: (code: string, change: PlanChange) =>
     call<CreditPlan>(`/api/v1/admin/credits/plans/${encodeURIComponent(code)}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(change),
+    }),
+  planClasses: () => call<PlanClasses>('/api/v1/admin/credits/plan-classes'),
+  // Each replaces that plan's values for that class; both null: the class pays the default again.
+  savePlanClasses: (values: PlanForClass[]) =>
+    call<PlanClasses>('/api/v1/admin/credits/plan-classes', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ values }),
     }),
   creditOrders: (page: number, pageSize: number, status: string, q: string) =>
     call<OrdersPage>(

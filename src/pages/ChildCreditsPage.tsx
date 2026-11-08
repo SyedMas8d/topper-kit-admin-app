@@ -58,7 +58,7 @@ export function ChildCreditsPage() {
         <div className="grid2">
           <div className="stat">
             <span className="small muted">Balance</span>
-            <b>{n(child.balance)}</b>
+            <b>{n(child.balance)} <span className="small muted">of {n(Math.max(child.total, child.balance))}</span></b>
             {child.next_expiry && child.next_expiry_credits > 0 && (
               <span className="small muted">{n(child.next_expiry_credits)} last until {day(child.next_expiry)}</span>
             )}
