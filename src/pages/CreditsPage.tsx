@@ -57,6 +57,7 @@ const GENERAL: Field[] = [
 const BY_CLASS: Field[] = [
   { key: 'cost_question', label: 'Homework question', help: 'Each question to the tutor (not Mathematics).', unit: 'credits' },
   { key: 'cost_maths_question', label: 'Maths question or worked answer', help: 'The Maths tutor, and Show me how on a Maths exercise.', unit: 'credits' },
+  { key: 'cost_tamil_question', label: 'Tamil question or worked answer', help: 'The Tamil tutor (a stronger model), and Show me how on a Tamil exercise.', unit: 'credits' },
   { key: 'cost_exercise', label: 'Exercise help', help: 'Show me how, or checking a written answer. Checking against the book’s key is free.', unit: 'credits' },
 ];
 

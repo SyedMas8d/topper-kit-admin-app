@@ -7,6 +7,7 @@ import { Notice } from '../components/Layout';
 const ACTIONS: Record<string, string> = {
   question: 'Homework question',
   maths_question: 'Maths question',
+  tamil_question: 'Tamil question',
   exercise: 'Exercise help',
   photo: 'Photo',
   download: 'Chapter PDF',
