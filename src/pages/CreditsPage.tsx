@@ -51,6 +51,7 @@ const GENERAL: Field[] = [
   { key: 'period_days', label: 'Pass month', help: 'Days between a 3- or 6-month pass’s monthly credits.', unit: 'days' },
   { key: 'cost_photo', label: 'Photo or picture', help: 'Reading a photo, or a picture asked about.', unit: 'credits' },
   { key: 'cost_download', label: 'Chapter PDF', help: 'The same chapter again within a day is free.', unit: 'credits' },
+  { key: 'cost_audio', label: 'Audio summary', help: '“Summarise by audio”, in English or Tamil. Given back if it fails.', unit: 'credits' },
 ];
 
 // A class may have its own: higher classes' answers are longer and harder.
