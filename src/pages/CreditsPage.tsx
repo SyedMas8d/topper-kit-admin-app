@@ -40,13 +40,14 @@ export function CreditsPage() {
 
 // ---- Settings ------------------------------------------------------------------------------------
 
-// unit: 'credits' are stored as tenths (0.5 credit is 5); 'days' as they are.
-type Field = { key: string; label: string; help: string; unit: 'credits' | 'days' };
+// unit: 'credits' are stored as tenths (0.5 credit is 5); 'days' and 'children' as they are.
+type Field = { key: string; label: string; help: string; unit: 'credits' | 'days' | 'children' };
 
 // The same for every class.
 const GENERAL: Field[] = [
   { key: 'trial_units', label: 'Trial credits', help: 'Given to each new child, once.', unit: 'credits' },
   { key: 'trial_days', label: 'Trial lasts', help: 'Days the trial credits can be used.', unit: 'days' },
+  { key: 'trial_children', label: 'Free trials per account', help: 'Children of one parent account who get the trial, ever: a removed child’s trial is not given again.', unit: 'children' },
   { key: 'validity_days', label: 'Credits last', help: 'Days each month’s or top-up’s credits can be used (unused ones carry over until then).', unit: 'days' },
   { key: 'period_days', label: 'Pass month', help: 'Days between a 3- or 6-month pass’s monthly credits.', unit: 'days' },
   { key: 'cost_photo', label: 'Photo or picture', help: 'Reading a photo, or a picture asked about.', unit: 'credits' },
@@ -68,10 +69,10 @@ const shownValue = (field: Field, value: number) => String(field.unit === 'credi
 function parse(field: Field, text: string): { value: number } | { problem: string } {
   const number = Number(text.trim());
   if (text.trim() === '' || !Number.isFinite(number) || number < 0) {
-    return { problem: field.unit === 'days' ? 'a whole number of days' : 'a number of credits, such as 0.5' };
+    return { problem: field.unit === 'credits' ? 'a number of credits, such as 0.5' : `a whole number of ${field.unit}` };
   }
-  if (field.unit === 'days') {
-    return Number.isInteger(number) ? { value: number } : { problem: 'a whole number of days' };
+  if (field.unit !== 'credits') {
+    return Number.isInteger(number) ? { value: number } : { problem: `a whole number of ${field.unit}` };
   }
   const units = Math.round(number * 10);
   return Math.abs(number * 10 - units) > 1e-9 ? { problem: 'credits go in steps of 0.1' } : { value: units };

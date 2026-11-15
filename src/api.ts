@@ -319,6 +319,9 @@ export const api = {
     call<LedgerPage>(
       `/api/v1/admin/credits/students/${studentId}/history?kind=${kind}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
     ),
+  // A child the parent asked support to remove: paid credits and pass are lost (payments stay).
+  removeChild: (studentId: string) =>
+    call<void>(`/api/v1/admin/credits/students/${studentId}`, { method: 'DELETE' }),
   gift: (studentId: string, credits: number, days: number, note: string) =>
     call<{ grant_id: string; credits: number }>(`/api/v1/admin/credits/students/${studentId}/gift`, json({ credits, days, note })),
   parents: (page: number, pageSize: number, q: string) =>

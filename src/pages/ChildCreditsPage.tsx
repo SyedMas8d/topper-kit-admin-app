@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import type { ChildCredits, LedgerKind, LedgerPage } from '../api';
 import { Notice } from '../components/Layout';
@@ -77,7 +77,56 @@ export function ChildCreditsPage() {
       )}
       {child && <Gift child={child} onGiven={() => setVersion((v) => v + 1)} />}
       <History id={id} version={version} />
+      {child && <RemoveChild child={child} />}
     </>
+  );
+}
+
+// The app will not remove a child with paid credits or a pass left; support does it here when
+// the parent asks (their right to have the child's data erased).
+function RemoveChild({ child }: { child: ChildCredits }) {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const loses = [
+    child.balance + child.upcoming > 0 ? `${n(child.balance + child.upcoming)} credits` : null,
+    child.pass_until ? `a pass until ${day(child.pass_until)}` : null,
+  ].filter(Boolean);
+
+  async function remove() {
+    const typed = window.prompt(
+      `Remove ${child.name}'s profile, progress and credits${loses.length ? ` (losing ${loses.join(' and ')})` : ''}? ` +
+        `This cannot be undone. Payments stay on record.\n\nOnly when the parent (${child.parent_email}) asked for it. ` +
+        `Type the child's name to confirm:`,
+    );
+    if (typed === null) return;
+    if (typed.trim().toLowerCase() !== child.name.trim().toLowerCase()) {
+      setError('The name did not match: nothing was removed.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await api.removeChild(child.student_id);
+      navigate('/parents');
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card stack">
+      <h3>Remove this profile</h3>
+      <div className="small muted">
+        The app refuses while a child has paid credits or a pass, so none is lost by accident. Use this only when the
+        parent asks support to remove the child anyway.
+      </div>
+      {error && <Notice tone="error">{error}</Notice>}
+      <div>
+        <button className="btn danger" disabled={busy} onClick={remove}>Remove {child.name}</button>
+      </div>
+    </div>
   );
 }
 
