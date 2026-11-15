@@ -231,6 +231,15 @@ export type LedgerEntry = {
   remaining?: number | null;
 };
 export type LedgerPage = { entries: LedgerEntry[]; next_cursor: string | null };
+// A change of a child's board or class; credits 0: the month's free one.
+export type ClassChange = {
+  from_board: string;
+  from_class: string;
+  to_board: string;
+  to_class: string;
+  credits: number;
+  created_at: string;
+};
 
 // --- Calls ---------------------------------------------------------------------------------
 
@@ -319,6 +328,8 @@ export const api = {
     call<LedgerPage>(
       `/api/v1/admin/credits/students/${studentId}/history?kind=${kind}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
     ),
+  // Every change of a child's board or class, newest first (the free ones too).
+  classChanges: (studentId: string) => call<ClassChange[]>(`/api/v1/admin/credits/students/${studentId}/class-changes`),
   // A child the parent asked support to remove: paid credits and pass are lost (payments stay).
   removeChild: (studentId: string) =>
     call<void>(`/api/v1/admin/credits/students/${studentId}`, { method: 'DELETE' }),

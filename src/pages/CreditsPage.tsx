@@ -51,8 +51,9 @@ const GENERAL: Field[] = [
   { key: 'validity_days', label: 'Credits last', help: 'Days each month’s or top-up’s credits can be used (unused ones carry over until then).', unit: 'days' },
   { key: 'period_days', label: 'Pass month', help: 'Days between a 3- or 6-month pass’s monthly credits.', unit: 'days' },
   { key: 'cost_photo', label: 'Photo or picture', help: 'Reading a photo, or a picture asked about.', unit: 'credits' },
-  { key: 'cost_download', label: 'Chapter PDF', help: 'The same chapter again within a day is free.', unit: 'credits' },
+  { key: 'cost_download', label: 'Chapter PDF', help: 'Every download. One the phone failed to make is given back.', unit: 'credits' },
   { key: 'cost_audio', label: 'Audio summary', help: '“Summarise by audio”, in English or Tamil. Given back if it fails.', unit: 'credits' },
+  { key: 'cost_switch', label: 'Change of class', help: 'Changing a child’s class or board, after the month’s free change (one free each calendar month).', unit: 'credits' },
 ];
 
 // A class may have its own: higher classes' answers are longer and harder.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
-import type { ChildCredits, LedgerKind, LedgerPage } from '../api';
+import type { ChildCredits, ClassChange, LedgerKind, LedgerPage } from '../api';
 import { Notice } from '../components/Layout';
 
 const ACTIONS: Record<string, string> = {
@@ -11,6 +11,8 @@ const ACTIONS: Record<string, string> = {
   exercise: 'Exercise help',
   photo: 'Photo',
   download: 'Chapter PDF',
+  audio: 'Audio summary',
+  switch: 'Change of class',
 };
 const SOURCES: Record<string, string> = { trial: 'Trial', order: 'Bought', admin: 'Given by admin' };
 const FILTERS: { kind: LedgerKind; label: string }[] = [
@@ -77,8 +79,54 @@ export function ChildCreditsPage() {
       )}
       {child && <Gift child={child} onGiven={() => setVersion((v) => v + 1)} />}
       <History id={id} version={version} />
+      <ClassChanges id={id} version={version} />
       {child && <RemoveChild child={child} />}
     </>
+  );
+}
+
+// Every change of board or class the parent made: one free a month, the rest charged.
+function ClassChanges({ id, version }: { id: string; version: number }) {
+  const [changes, setChanges] = useState<ClassChange[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .classChanges(id)
+      .then(setChanges)
+      .catch((err: Error) => setError(err.message));
+  }, [id, version]);
+
+  if (changes !== null && changes.length === 0) return null;
+  return (
+    <div className="card stack">
+      <h3>Class changes</h3>
+      {error && <Notice tone="error">{error}</Notice>}
+      {changes === null ? (
+        <div className="muted">Loading…</div>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Credits</th>
+            </tr>
+          </thead>
+          <tbody>
+            {changes.map((c, i) => (
+              <tr key={`${c.created_at}-${i}`}>
+                <td className="small">{when(c.created_at)}</td>
+                <td>{c.from_board} · Class {c.from_class}</td>
+                <td>{c.to_board} · Class {c.to_class}</td>
+                <td>{c.credits > 0 ? n(c.credits) : <span className="pill">free</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 
