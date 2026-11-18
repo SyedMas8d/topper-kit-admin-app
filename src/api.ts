@@ -207,6 +207,8 @@ export type OrdersPage = { total: number; page: number; page_size: number; paid_
 export type ChildCredits = {
   student_id: string;
   name: string;
+  student_code: string | null; // the child's Student ID, once a profile PIN was set
+  has_pin: boolean;
   board: string;
   class_level: string;
   parent_email: string;

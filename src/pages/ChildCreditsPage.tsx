@@ -12,6 +12,7 @@ const ACTIONS: Record<string, string> = {
   photo: 'Photo',
   download: 'Chapter PDF',
   audio: 'Audio summary',
+  video: 'Video summary',
   switch: 'Change of class',
 };
 const SOURCES: Record<string, string> = { trial: 'Trial', order: 'Bought', admin: 'Given by admin' };
@@ -52,6 +53,8 @@ export function ChildCreditsPage() {
           {child && (
             <div className="small muted">
               {child.board} · Class {child.class_level} · parent {child.parent_email}
+              {child.student_code ? ` · Student ID ${child.student_code}` : ''}
+              {child.has_pin ? ' · profile PIN on' : ''}
             </div>
           )}
         </div>
