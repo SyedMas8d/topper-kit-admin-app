@@ -53,7 +53,7 @@ const GENERAL: Field[] = [
   { key: 'cost_photo', label: 'Photo or picture', help: 'Reading a photo, or a picture asked about.', unit: 'credits' },
   { key: 'cost_download', label: 'Chapter PDF', help: 'Every download. One the phone failed to make is given back.', unit: 'credits' },
   { key: 'cost_audio', label: 'Audio summary', help: '“Summarise by audio”, in English or Tamil. Given back if it fails.', unit: 'credits' },
-  { key: 'cost_video', label: 'Video summary', help: '“Video summary”: the lesson\'s diagrams played scene by scene, narrated in English or Tamil. Given back if it fails.', unit: 'credits' },
+  { key: 'cost_video', label: 'Visual summary', help: '“Visual summary”: the lesson\'s diagrams played scene by scene, narrated in English or Tamil. Given back if it fails.', unit: 'credits' },
   { key: 'cost_switch', label: 'Change of class', help: 'Changing a child’s class or board, after the month’s free change (one free each calendar month).', unit: 'credits' },
 ];
 

@@ -12,7 +12,7 @@ const ACTIONS: Record<string, string> = {
   photo: 'Photo',
   download: 'Chapter PDF',
   audio: 'Audio summary',
-  video: 'Video summary',
+  video: 'Visual summary',
   switch: 'Change of class',
 };
 const SOURCES: Record<string, string> = { trial: 'Trial', order: 'Bought', admin: 'Given by admin' };
